@@ -1,4 +1,6 @@
 import base64
+import webbrowser
+
 from PIL import Image
 from selenium import webdriver
 import time
@@ -13,6 +15,8 @@ import tempfile  # 用于创建临时文件
 from bs4 import BeautifulSoup  # 引入BeautifulSoup
 import os
 import mywebsql
+from app import fetch_submit_types, create_pie_chart, fetch_pass_counts, create_bar_chart
+
 
 class CatchProcession:
     def __init__(self, log_id, passwd):
@@ -107,95 +111,100 @@ class CatchProcession:
                 EC.element_to_be_clickable(
                     (By.XPATH, r'//*[@id="app"]/main/section/div/div[2]/div[1]/div[2]/div[2]/div/div[1]'))
             ).click()
-            time.sleep(1)
+            time.sleep(0.1)
 
             # 点击对应实验
             WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable(
                     (By.XPATH, r'//*[@id="app"]/main/section/div/div/div/div[2]/div[1]/div[3]/table/tbody/tr[1]'))
             ).click()
-            time.sleep(1)
+            time.sleep(0.1)
 
             # 点击比赛详情
             WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable(
                     (By.XPATH, r'//*[@id="app"]/main/section/div/section/aside/div[1]/div/ul/li'))
             ).click()
-            time.sleep(1)
+            time.sleep(0.1)
 
-            # # 点击排行榜
-            # WebDriverWait(self.driver, 10).until(
-            #     EC.element_to_be_clickable((By.XPATH, r'//*[@id="tab-2"]'))
-            # ).click()
-            # time.sleep(1)
+            # 点击每页显示数量
+            WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, r'//*[@id="pane-1"]/div/div[2]/div[2]/span/div/div/input'))
+            ).click()
+            time.sleep(0.1)
+
+            # 选择每页显示数量
+            WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, r'//html/body/div[2]/div[1]/div[1]/ul/li[5]'))
+            ).click()
+            time.sleep(0.1)
 
         except Exception as e:
             print(f"An error occurred during navigation: {e}")
 
     def perform_search(self):
-        row_texts = []
+
+        flag = 1
         try:
             while True:
-                # 等待table的tbody可见
-                tbody = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located(
-                        (By.XPATH, '//*[@id="pane-2"]/div/div[2]/div[4]/div[2]/table/tbody'))
-                )
-                time.sleep(1)
+                row_texts = []
+                # 点击第一页
+                WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, r'//*[@id="pane-1"]/div/div[2]/div[2]/ul/li[1]'))
+                ).click()
+                while True:
+                    # 等待table的tbody可见
+                    tbody = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located(
+                            (By.XPATH, '//*[@id="pane-1"]/div/div[2]/div[1]/div[3]/table/tbody'))
+                    )
+                    time.sleep(0.1)
 
-                # 获取tbody的HTML内容
-                tbody_html = tbody.get_attribute('innerHTML')
+                    # 获取tbody的HTML内容
+                    tbody_html = tbody.get_attribute('innerHTML')
 
-                # 使用BeautifulSoup解析HTML
-                soup = BeautifulSoup(tbody_html, 'html.parser')
+                    # 使用BeautifulSoup解析HTML
+                    soup = BeautifulSoup(tbody_html, 'html.parser')
+                    # 遍历每个tr元素
+                    for row in soup.find_all('tr'):
+                        col_texts = []
+                        # 遍历每个td元素
+                        for col in row.find_all('td'):
+                            # 获取td文本
+                            td_text = col.get_text(strip=True)
+                            col_texts.append(td_text)
+                        row_texts.append(col_texts)
 
-                # 遍历每个tr元素
-                for row in soup.find_all('tr'):
-                    col_texts = []
-                    # 遍历每个td元素
-                    for col in row.find_all('td'):
-                        # 获取td文本
-                        td_text = col.get_text(strip=True)
-                        col_texts.append(td_text)
-
-                    row_texts.append(col_texts)
-                    # 打印每行的文本内容
-                    print("\t".join(col_texts))
-
-                # 查找并点击下一页按钮
-                page_numbers = self.driver.find_elements(By.XPATH, '//*[@id="pane-2"]/div/div[3]/ul/li')
-                for page in page_numbers:
-                    if 'active' in page.get_attribute('class'):
-                        current_page_index = page_numbers.index(page)
+                    if flag == 0:
                         break
+                    # 查找并点击下一页按钮
+                    page_numbers = self.driver.find_elements(By.XPATH, '//*[@id="pane-1"]/div/div[2]/div[2]/ul/li')
+                    for page in page_numbers:
+                        if 'active' in page.get_attribute('class'):
+                            current_page_index = page_numbers.index(page)
+                            break
 
-                # 点击下一页按钮
-                if current_page_index < len(page_numbers) - 1:
-                    page_numbers[current_page_index + 1].click()
-                    time.sleep(1)  # 等待页面加载
-                else:
-                    break  # 已经是最后一页，退出循环
+                    # 点击下一页按钮
+                    if current_page_index < len(page_numbers) - 1:
+                        page_numbers[current_page_index + 1].click()
+                    else:
+                        break  # 已经是最后一页，退出循环
 
+                mywebsql.insert_data(row_texts, flag)
+                problem_ids = ['A', 'B', 'C', 'D', 'E']
+                for problem_id in problem_ids:
+                    data = fetch_submit_types(problem_id)
+                    create_pie_chart(data, problem_id)
+                data = fetch_pass_counts()
+                create_bar_chart(data, problem_ids)
+                if flag:
+                    # HTML文件的路径
+                    html_file_path = 'templates/index.html'
+                    # 将文件路径转换为绝对路径
+                    abs_path = os.path.abspath(html_file_path)
+                    # 打开HTML文件在默认浏览器中显示
+                    webbrowser.open(f'file://{abs_path}')
+                flag = 0
+                time.sleep(25)
         except Exception as e:
             print(f"An error occurred during perform_search: {e}")
-        finally:
-            mywebsql.clear_and_insert_data(row_texts)
-            time.sleep(1)
-
-
-# def save_list_to_file(row_texts, file_name):
-#     try:
-#         # 获取当前脚本所在目录
-#         current_dir = os.path.dirname(__file__)
-#         # 构建文件路径
-#         file_path = os.path.join(current_dir, file_name)
-#
-#         with open(file_path, 'w', encoding='utf-8') as file:
-#             for row in row_texts:
-#                 file.write(row + '\n')
-#         print(f"数据已成功保存到文件: {file_path}")
-#     except Exception as e:
-#         print(f"保存文件时发生错误: {e}")
-
-
-
