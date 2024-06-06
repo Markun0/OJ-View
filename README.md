@@ -39,7 +39,7 @@ OJ-View是一个针对szu和sztu的**面向对象OJ**做题网站开发的学生
 # 效果展示
 
 如图:
+![image-20240605212836200](https://img.picui.cn/free/2024/06/06/66613941231d9.png)
 
-![image-20240605212759865](C:\Users\86133\AppData\Roaming\Typora\typora-user-images\image-20240605212759865.png)
+![image-20240605212759865](https://img.picui.cn/free/2024/06/06/666139039dd64.png)
 
-![image-20240605212836200](C:\Users\86133\AppData\Roaming\Typora\typora-user-images\image-20240605212836200.png)
