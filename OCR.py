@@ -13,9 +13,9 @@ class BaiduOCR:
         filename = path.basename(self.picfile)
         # 你的AppID，APIKey，Secret Key
         # Mark00, SZtu106094
-        APP_ID = '76871832'
-        API_KEY = 'iGo7rRQ9n2WsvwJ5NCGOk01p'
-        SECRECT_KEY = 'UJEJ9QkxsEFkdDH85AE9NH6SjRAnyVdZ'
+        APP_ID = '*******'
+        API_KEY = '*********'
+        SECRECT_KEY = '***************'
         client = AipOcr(APP_ID, API_KEY, SECRECT_KEY)
 
         i = open(self.picfile, 'rb')
